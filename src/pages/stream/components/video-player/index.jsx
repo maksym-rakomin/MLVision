@@ -1,8 +1,7 @@
-import videojs from 'video.js'
 import VideoJS from './components/videojs-controller.jsx'
-import {useRef} from 'react'
+import { memo, useRef} from 'react'
 
-export const VideoPlayer = () => {
+export const VideoPlayer = memo(function VideoPlayer ({getCurrentTime}) {
     const playerRef = useRef(null);
 
     const videoJsOptions = {
@@ -11,7 +10,7 @@ export const VideoPlayer = () => {
         responsive: true,
         fluid: true,
         sources: [{
-            src: 'src/assets/video/1746175812857099.mp4',
+            src: 'src/assets/video/1746178816172687.mp4',
             type: 'video/mp4'
         }]
     };
@@ -19,15 +18,10 @@ export const VideoPlayer = () => {
     const handlePlayerReady = (player) => {
         playerRef.current = player;
 
-        // You can handle player events here, for example:
-        player.on('waiting', () => {
-            videojs.log('player is waiting');
-        });
-
-        player.on('dispose', () => {
-            videojs.log('player will dispose');
+        player.on('timeupdate', () => {
+            getCurrentTime(player.currentTime())
         });
     };
     return <VideoJS options={videoJsOptions} onReady={handlePlayerReady} />
 
-}
+})

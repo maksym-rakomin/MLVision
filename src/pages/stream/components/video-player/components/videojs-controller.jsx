@@ -1,8 +1,11 @@
-import {useEffect, useRef} from 'react'
+import {useContext, useEffect, useRef} from 'react'
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
+import {VideoContext} from '../../../contexts/video.context.js'
 
 export const VideoJS = (props) => {
+    const contextRef = useContext(VideoContext);
+
     const videoRef = useRef(null);
     const playerRef = useRef(null);
     const {options, onReady} = props;
@@ -43,6 +46,16 @@ export const VideoJS = (props) => {
             }
         };
     }, [playerRef]);
+
+    useEffect(() => {
+        if (contextRef) {
+            contextRef.current = playerRef.current;
+        }
+
+        return () => {
+            if (contextRef) contextRef.current = null;
+        };
+    }, [contextRef]);
 
     return (
         <div data-vjs-player>
