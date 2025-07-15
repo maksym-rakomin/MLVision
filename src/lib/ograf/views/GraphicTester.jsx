@@ -78,8 +78,7 @@ function getColorFromValue(value) {
 // todo
 
 
-export default function GraphicTesterInner({graphic, currentFrame}) {
-    // console.log(33333, currentFrame)
+function GraphicTester({graphic, track}) {
     // let navigate = useNavigate()
 
     const [settings, setSettings] = React.useState(getDefaultSettings())
@@ -91,13 +90,9 @@ export default function GraphicTesterInner({graphic, currentFrame}) {
 
     const [graphicManifest, setGraphicManifest] = React.useState(null)
 
-    const [errorMessage, setErrorMessage] = React.useState('')
-    const [errors, setErrors] = React.useState([])
-    const [warnings, setWarnings] = React.useState([])
-
 
     const previewContainerRef = React.useRef(null)
-    const [scale, setScale] = React.useState(1)
+    const [_scale, setScale] = React.useState(1)
 
     const canvasRef = React.useRef(null)
     const rendererRef = React.useRef(null)
@@ -115,7 +110,6 @@ export default function GraphicTesterInner({graphic, currentFrame}) {
     }, [settings])
 
     const onError = React.useCallback((e) => {
-        setErrorMessage(`${e.message || e}`)
         console.error(e)
     }, [])
 
@@ -162,17 +156,6 @@ export default function GraphicTesterInner({graphic, currentFrame}) {
         }
     }, [])
 
-    React.useEffect(() => {
-        setErrors(issueTracker.errors)
-        setWarnings(issueTracker.warnings)
-        const listener = issueTracker.listenToChanges(() => {
-            setErrors([...issueTracker.errors])
-            setWarnings([...issueTracker.warnings])
-        })
-        return () => {
-            listener.stop()
-        }
-    }, [])
 
     const settingsRef = React.useRef(settings)
     React.useEffect(() => {
@@ -275,21 +258,7 @@ export default function GraphicTesterInner({graphic, currentFrame}) {
     const playTimeRef = React.useRef(0)
 
     const scheduleRef = React.useRef([])
-    const [schedule, setSchedule] = React.useState([])
-    const setActionsSchedule = React.useCallback(
-        (schedule) => {
-            scheduleRef.current = JSON.parse(JSON.stringify(schedule))
-            setSchedule(scheduleRef.current)
-            if (settings.realtime) {
-                if (!settings.autoReloadEnable) {
-                    triggerReloadGraphic()
-                }
-            } else {
-                rendererRef.current.setActionsSchedule(scheduleRef.current).catch(issueTracker.addError)
-            }
-        },
-        [settings]
-    )
+
 
     // Load the graphic manifest:
     React.useEffect(() => {
@@ -298,40 +267,52 @@ export default function GraphicTesterInner({graphic, currentFrame}) {
 
 
     useEffect(() => {
-        if (!currentFrame) {
+        if (!rendererRef?.current || !rendererRef?.current.updateAction) {
             return
         }
 
+        console.log(1111, track?.class_name, track?.track_id)
+
+        // Create data object - no useMemo needed here as we're already in a dependency-controlled effect
         const data = {
-            _title: `${currentFrame?.tracked_objects?.[0]?.class_name} - ${currentFrame?.tracked_objects?.[0]?.track_id}`,
+            _title: `${track?.class_name} - ${track?.track_id}`,
             _subtitle: `Current speed: ${getNextSpeed().toFixed(2)} km/h`,
             _color: getColorFromValue(+getNextSpeed().toFixed(0))
-        }
-        console.log(5555, rendererRef.current)
-        issueTracker.clear()
-        rendererRef.current.updateAction({
-            data,
-            top: `${currentFrame?.tracked_objects?.[0]?.track_id}px`
-        }).catch(issueTracker.addError)
-        // console.log(111, rendererRef.current.layer.currentGraphic.element.style, `translate(${currentFrame?.tracked_objects?.[0]?.bbox?.[0]}px, ${currentFrame?.tracked_objects?.[0]?.bbox?.[3]}px)`)
+        };
 
-        rendererRef.current.layer.currentGraphic.element.style.transform = `translate(${currentFrame?.tracked_objects?.[0]?.bbox?.[0] / 4}px, ${currentFrame?.tracked_objects?.[0]?.bbox?.[3] / 4}px)`
-        // rendererRef.current.updateActionPosition({
-        //     x: currentFrame?.tracked_objects?.[0]?.bbox?.[0],
-        //     y: currentFrame?.tracked_objects?.[0]?.bbox?.[4]
-        // }).catch(issueTracker.addError)
-    }, [currentFrame])
+        // Batch updates to reduce rendering cycles
+        const updateGraphic = () => {
+            issueTracker.clear();
+
+            // Update action data
+            if (rendererRef.current?.updateAction) {
+                rendererRef.current.updateAction({data}).catch(issueTracker.addError);
+            }
+
+            // Update position
+            if (rendererRef.current?.layer?.currentGraphic?.element && track?.bbox) {
+                rendererRef.current.layer.currentGraphic.element.style.transform =
+                    `translate(${track.bbox[0] / 2.4}px, ${(track.bbox[2] / 2.4) - 250}px)`;
+            }
+        };
+
+        // Use requestAnimationFrame for smoother updates
+        requestAnimationFrame(updateGraphic);
+
+    }, [track?.class_name, track?.track_id, track?.bbox])
 
 
     useEffect(() => {
-        // if (!!currentFrame && currentFrame?.tracked_objects?.length > 0) {
+        // if (rendererRef.current) return
+        //
         //     issueTracker.clear()
         //     rendererRef.current.playAction({skipAnimation: false,}).catch(issueTracker.addError)
-        // } else {
-        //     issueTracker.clear()
-        //     rendererRef.current.stopAction({skipAnimation: false,}).catch(issueTracker.addError)
+        //
+        // return () => {
+        //         issueTracker.clear()
+        //         rendererRef.current.stopAction({skipAnimation: false,}).catch(issueTracker.addError)
         // }
-    }, [currentFrame])
+    }, [])
 
 
     return (
@@ -365,32 +346,32 @@ export default function GraphicTesterInner({graphic, currentFrame}) {
                 />
             </div>
 
-            <ButtonGroup>
-                <Button
-                    onClick={() => {
-                        issueTracker.clear()
-                        rendererRef.current
-                            .playAction({
-                                skipAnimation: false,
-                            })
-                            .catch(issueTracker.addError)
-                    }}
-                >
-                    Play
-                </Button>
-                <Button
-                    onClick={() => {
-                        issueTracker.clear()
-                        rendererRef.current
-                            .stopAction({
-                                skipAnimation: false,
-                            })
-                            .catch(issueTracker.addError)
-                    }}
-                >
-                    Stop
-                </Button>
-            </ButtonGroup>
+            {/*<ButtonGroup>*/}
+            {/*    <Button*/}
+            {/*        onClick={() => {*/}
+            {/*            issueTracker.clear()*/}
+            {/*            rendererRef.current*/}
+            {/*                .playAction({*/}
+            {/*                    skipAnimation: false,*/}
+            {/*                })*/}
+            {/*                .catch(issueTracker.addError)*/}
+            {/*        }}*/}
+            {/*    >*/}
+            {/*        Play*/}
+            {/*    </Button>*/}
+            {/*    <Button*/}
+            {/*        onClick={() => {*/}
+            {/*            issueTracker.clear()*/}
+            {/*            rendererRef.current*/}
+            {/*                .stopAction({*/}
+            {/*                    skipAnimation: false,*/}
+            {/*                })*/}
+            {/*                .catch(issueTracker.addError)*/}
+            {/*        }}*/}
+            {/*    >*/}
+            {/*        Stop*/}
+            {/*    </Button>*/}
+            {/*</ButtonGroup>*/}
 
 
             {/*<div className="container-md sidebar">*/}
@@ -420,3 +401,15 @@ export default function GraphicTesterInner({graphic, currentFrame}) {
         </SettingsContext.Provider>
     )
 }
+
+// Memoize the GraphicTester component to prevent unnecessary re-renders
+export default React.memo(GraphicTester, (prevProps, nextProps) => {
+    // Only re-render if these specific properties have changed
+    return (
+        prevProps.track?.track_id === nextProps.track?.track_id &&
+        prevProps.track?.class_name === nextProps.track?.class_name &&
+        prevProps.track?.bbox?.[0] === nextProps.track?.bbox?.[0] &&
+        prevProps.track?.bbox?.[2] === nextProps.track?.bbox?.[2] &&
+        prevProps.graphic === nextProps.graphic
+    );
+});

@@ -2,11 +2,11 @@ import { LayerHandler } from './LayerHandler'
 import { ResourceProvider } from './ResourceProvider'
 
 export class Renderer {
-	constructor(containerElement) {
+	constructor(containerElement, data = {}) {
 		// This renderer has only one layer.
 		this.layer = new LayerHandler(containerElement, 'default-layer', 0)
 		this.graphicState = ''
-		this.data = {}
+		this.data = data
 	}
 
 	setGraphic(graphic) {

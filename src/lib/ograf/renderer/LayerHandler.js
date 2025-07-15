@@ -39,6 +39,7 @@ export class LayerHandler {
 		// Add element to DOM:
 		const element = document.createElement(elementName)
 		element.style.position = 'absolute'
+		element.style.transition = 'all .1s ease'
 		this.shadowRoot.appendChild(element)
 
 		this.currentGraphic = {

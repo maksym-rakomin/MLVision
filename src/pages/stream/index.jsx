@@ -1,8 +1,9 @@
 import {VideoPlayer} from './components/video-player/index.jsx'
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {VideoContext} from './contexts/video.context.js'
-import GraphicTesterInner from '../../lib/ograf/views/GraphicTester.jsx'
+import GraphicTester from '../../lib/ograf/views/GraphicTester.jsx'
 import graphicOgraf from '../../../public/ograf/lower/lower.json'
+import GraphicTesterWrapper from '../../lib/ograf/views/GraphicTesterWrapper.jsx'
 
 
 
@@ -13,10 +14,19 @@ export const Stream = () => {
     const [isPlaying, setIsPlaying] = useState(false)
 
     const [frames, setFrames] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [_loading, setLoading] = useState(true);
+    const [_error, setError] = useState(null);
+
+    // Cache for storing frames that have been loaded
+    const frameCache = useRef(new Map());
+
+    // Window size for frame loading (how many frames to keep in memory)
+    const FRAME_WINDOW_SIZE = 300; // 10 seconds at 30fps
 
     useEffect(() => {
+        // Flag to track if the component is mounted
+        let isMounted = true;
+
         const parseStream = async () => {
             try {
                 const response = await fetch('/data/log_leader_strict.jsonl');
@@ -30,86 +40,111 @@ export const Stream = () => {
                 let parsedFrames = [];
 
                 while (true) {
+                    // Check if component is still mounted
+                    if (!isMounted) break;
+
                     const { value, done } = await reader.read();
                     if (done) break;
 
                     buffer += value;
                     const lines = buffer.split('\n');
 
-                    // Последняя строка может быть неполной — оставим её в буфере
+                    // Keep the last potentially incomplete line in buffer
                     buffer = lines.pop() ?? '';
 
                     for (const line of lines) {
                         if (line.trim() === '') continue;
                         try {
                             const parsed = JSON.parse(line);
+
+                            // Store in cache for quick access
+                            frameCache.current.set(parsed.frame_number, parsed);
+
                             parsedFrames.push(parsed);
-                            // Либо можно вызывать setFrames(prev => [...prev, parsed])
                         } catch (err) {
-                            console.warn('Ошибка при парсинге строки:', line, err);
+                            console.warn('Error parsing line:', line, err);
                         }
                     }
 
-                    // Пример: обновляем состояние каждые 100 кадров
+                    // Update state in larger batches for better performance
                     if (parsedFrames.length >= 100) {
-                        setFrames(prev => [...prev, ...parsedFrames]);
+                        if (isMounted) {
+                            setFrames(prev => {
+                                // Keep only a window of frames in memory
+                                const newFrames = [...prev, ...parsedFrames];
+                                if (newFrames.length > FRAME_WINDOW_SIZE) {
+                                    return newFrames.slice(-FRAME_WINDOW_SIZE);
+                                }
+                                return newFrames;
+                            });
+                        }
                         parsedFrames = [];
                     }
                 }
 
-                // Добавим оставшиеся кадры
-                if (parsedFrames.length > 0) {
-                    setFrames(prev => [...prev, ...parsedFrames]);
+                // Add remaining frames
+                if (parsedFrames.length > 0 && isMounted) {
+                    setFrames(prev => {
+                        const newFrames = [...prev, ...parsedFrames];
+                        if (newFrames.length > FRAME_WINDOW_SIZE) {
+                            return newFrames.slice(-FRAME_WINDOW_SIZE);
+                        }
+                        return newFrames;
+                    });
                 }
 
-                setLoading(false);
+                if (isMounted) {
+                    setLoading(false);
+                }
             } catch (err) {
                 console.error(err);
-                setError(err.message);
-                setLoading(false);
+                if (isMounted) {
+                    setError(err.message);
+                    setLoading(false);
+                }
             }
         };
 
         parseStream();
+
+        // Cleanup function to prevent memory leaks
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
+    // Optimize getCurrentTime with useCallback to prevent unnecessary re-renders
     const getCurrentTime = useCallback((time) => {
-        // console.log(time)
-        setVideoTime(time)
+        setVideoTime(time);
+    }, []);
 
-    }, [])
-
-    // const getIntervalValue = useMemo(() => {
-    //     const item = data.find(el => videoTime >= el.start && videoTime < el.end)
-    //     return item ? item.value : null
-    // }, [videoTime])
-
-    const handlePlayPause = () => {
+    // Optimize handlePlayPause with useCallback
+    const handlePlayPause = useCallback(() => {
         if (videoPlayer.current) {
-
             if (isPlaying) {
-                videoPlayer.current.pause()
-                setIsPlaying(false)
+                videoPlayer.current.pause();
+                setIsPlaying(false);
             } else {
-                videoPlayer.current.play()
-                setIsPlaying(true)
+                videoPlayer.current.play();
+                setIsPlaying(true);
             }
         }
-    }
+    }, [isPlaying]);
 
-    const framesMap = useMemo(() => {
-        const map = new Map();
-        for (const f of frames) {
-            map.set(f.frame_number, f);
-        }
-        return map;
-    }, [frames]);
-
+    // Use the frameCache directly instead of creating a new Map on each render
+    // This is more efficient than rebuilding the map from frames array
     const currentFrame = useMemo(() => {
         const fps = 30;
         const frameIndex = Math.floor(videoTime * fps);
-        return framesMap.get(frameIndex);
-    }, [videoTime, framesMap]);
+
+        // First try to get from cache for better performance
+        if (frameCache.current.has(frameIndex)) {
+            return frameCache.current.get(frameIndex);
+        }
+
+        // Fallback to searching in frames array if not in cache
+        return frames.find(f => f.frame_number === frameIndex);
+    }, [videoTime, frames]);
 
     return (
         <div>
@@ -129,7 +164,7 @@ export const Stream = () => {
             <VideoContext.Provider value={videoPlayer}>
                 <div className="relative">
                     <VideoPlayer getCurrentTime={getCurrentTime}/>
-                    <GraphicTesterInner
+                    <GraphicTesterWrapper
                         graphic={{manifest: graphicOgraf, "folderPath": "/ograf/lower/", "path": "/ograf/lower/lower.json"}}
                         currentFrame={currentFrame}
                     />
@@ -139,4 +174,3 @@ export const Stream = () => {
         </div>
     )
 }
-
