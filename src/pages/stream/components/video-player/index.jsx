@@ -10,7 +10,7 @@ export const VideoPlayer = memo(function VideoPlayer ({getCurrentTime}) {
         responsive: true,
         fluid: true,
         sources: [{
-            src: 'src/assets/video/1746178816172687.mp4',
+            src: 'src/assets/video/mid-lap.mp4',
             type: 'video/mp4'
         }]
     };
