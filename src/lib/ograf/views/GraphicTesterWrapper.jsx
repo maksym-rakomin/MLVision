@@ -8,6 +8,7 @@ const isObjectVisible = (item) => {
 };
 
 function GraphicTesterWrapper({graphic, currentFrame}) {
+    // console.log(999, currentFrame?.frame_number)
     // Memoize the filtered tracked objects to prevent unnecessary processing
     const visibleObjects = useMemo(() => {
         if (!currentFrame || !currentFrame.tracked_objects || !currentFrame.tracked_objects.length) {

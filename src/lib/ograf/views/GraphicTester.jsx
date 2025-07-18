@@ -32,7 +32,7 @@ function createAutonomousSpeedController() {
             } else {
                 targetSpeed = MAX_SPEED
             }
-            console.log(`[Автоконтроль] Новая целевая скорость: ${targetSpeed.toFixed(0)} км/ч`)
+            // console.log(`[Автоконтроль] Новая целевая скорость: ${targetSpeed.toFixed(0)} км/ч`)
         }
 
         // 1. Ограничиваем целевую скорость нашими пределами (хотя она уже должна быть в них)
@@ -271,7 +271,7 @@ function GraphicTester({graphic, track}) {
             return
         }
 
-        console.log(1111, track?.class_name, track?.track_id)
+        // console.log(1111, track?.class_name, track?.track_id)
 
         // Create data object - no useMemo needed here as we're already in a dependency-controlled effect
         const data = {
