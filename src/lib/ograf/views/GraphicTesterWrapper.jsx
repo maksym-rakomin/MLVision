@@ -1,46 +1,71 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useLayoutEffect, useRef } from 'react'
 import GraphicTester from './GraphicTester.jsx'
 
-// Helper function to determine if an object should be rendered based on visibility
+// Исходные размеры видео, относительно которых даны координаты bbox
+const SOURCE_VIDEO_WIDTH = 1280;
+
+const MAX_CONCURRENT_OBJECTS = 5;
+
 const isObjectVisible = (item) => {
-    // Basic visibility check - can be expanded based on your requirements
     return item && item.bbox && item.bbox.length >= 4;
 };
 
-function GraphicTesterWrapper({graphic, currentFrame}) {
-    // console.log(999, currentFrame?.frame_number)
-    // Memoize the filtered tracked objects to prevent unnecessary processing
+const poolKeys = Array.from({ length: MAX_CONCURRENT_OBJECTS }, (_, i) => i);
+
+function GraphicTesterWrapper({ graphic, currentFrame }) {
+    const wrapperRef = useRef(null);
+    // Состояние для хранения реальных размеров контейнера и коэффициента масштабирования
+    const [containerMetrics, setContainerMetrics] = useState({ scale: 1 });
+
+    // Эффект для отслеживания изменения размеров контейнера
+    useLayoutEffect(() => {
+        const observerTarget = wrapperRef.current;
+        if (!observerTarget) return;
+
+        // Используем ResizeObserver для эффективного отслеживания изменений
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                const { width } = entry.contentRect;
+                // Рассчитываем масштабный коэффициент
+                const scale = width / SOURCE_VIDEO_WIDTH;
+                setContainerMetrics({ scale });
+            }
+        });
+
+        resizeObserver.observe(observerTarget);
+
+        // Очистка при размонтировании компонента
+        return () => resizeObserver.unobserve(observerTarget);
+    }, []); // Запускаем только один раз
+
     const visibleObjects = useMemo(() => {
-        if (!currentFrame || !currentFrame.tracked_objects || !currentFrame.tracked_objects.length) {
+        if (!currentFrame || !currentFrame.tracked_objects) {
             return [];
         }
-
-        // Filter objects to only render those that are visible
-        // This is a simple optimization - you can implement more sophisticated filtering
         return currentFrame.tracked_objects.filter(isObjectVisible);
     }, [currentFrame]);
 
-    // If there are no visible objects, don't render anything
-    if (visibleObjects.length === 0) {
-        return null;
-    }
-
     return (
-        <div className="graphic-tester-wrapper">
-            {visibleObjects.map((item) => (
-                <GraphicTester
-                    key={item.track_id}
-                    graphic={graphic}
-                    track={item}
-                />
-            ))}
+        // Устанавливаем ref на этот div, чтобы измерить его реальную ширину
+        <div ref={wrapperRef} className="graphic-tester-wrapper" style={{ position: "absolute", inset: 0 }}>
+            {poolKeys.map((index) => {
+                const trackData = visibleObjects[index];
+
+                return (
+                    <GraphicTester
+                        key={index}
+                        graphic={graphic}
+                        track={trackData}
+                        // Передаем рассчитанный масштаб в каждый дочерний компонент
+                        containerScale={containerMetrics.scale}
+                    />
+                );
+            })}
         </div>
     );
 }
 
-// Memoize the wrapper component to prevent unnecessary re-renders
 export default React.memo(GraphicTesterWrapper, (prevProps, nextProps) => {
-    // Only re-render if the frame number changes or the graphic changes
     return (
         prevProps.graphic === nextProps.graphic &&
         prevProps.currentFrame?.frame_number === nextProps.currentFrame?.frame_number

@@ -5,7 +5,6 @@ import {fileHandler} from '../FileHandler.js'
 import {issueTracker} from '../renderer/IssueTracker.js'
 
 import {getDefaultSettings, SettingsContext} from '../contexts/SettingsContext.js'
-import {Button, ButtonGroup} from 'react-bootstrap'
 
 // todo
 function createAutonomousSpeedController() {
@@ -77,9 +76,11 @@ function getColorFromValue(value) {
 
 // todo
 
+const VIDEO_WIDTH = 1280
+const VIDEO_HEIGHT = 720
 
-function GraphicTester({graphic, track}) {
-    // let navigate = useNavigate()
+
+function GraphicTester({graphic, track, containerScale}) {
 
     const [settings, setSettings] = React.useState(getDefaultSettings())
 
@@ -271,48 +272,59 @@ function GraphicTester({graphic, track}) {
             return
         }
 
-        // console.log(1111, track?.class_name, track?.track_id)
+        if (!track || !track.bbox || !previewContainerRef.current) {
+            // Если трека нет, скрываем компонент. Это важно для пулинга.
+            if (previewContainerRef.current) {
+                previewContainerRef.current.style.visibility = 'hidden';
+            }
+            return;
+        }
+
+        // Если есть, делаем видимым
+        previewContainerRef.current.style.visibility = 'visible';
 
         // Create data object - no useMemo needed here as we're already in a dependency-controlled effect
+        // const data = {
+        //     _title: `${track?.class_name} - ${track?.track_id}`,
+        //     _subtitle: `Current speed: ${getNextSpeed().toFixed(2)} km/h`,
+        //     _color: getColorFromValue(+getNextSpeed().toFixed(0))
+        // }
         const data = {
-            _title: `${track?.class_name} - ${track?.track_id}`,
-            _subtitle: `Current speed: ${getNextSpeed().toFixed(2)} km/h`,
-            _color: getColorFromValue(+getNextSpeed().toFixed(0))
-        };
+            _team: `${track?.class_name} - ${track?.track_id}`,
+            _driver: `Current speed: ${getNextSpeed().toFixed(2)} km/h`,
+            _car_position: getColorFromValue(+getNextSpeed().toFixed(0))
+        }
 
         // Batch updates to reduce rendering cycles
         const updateGraphic = () => {
-            issueTracker.clear();
+            issueTracker.clear()
 
             // Update action data
             if (rendererRef.current?.updateAction) {
-                rendererRef.current.updateAction({data}).catch(issueTracker.addError);
+                rendererRef.current.updateAction({data}).catch(issueTracker.addError)
             }
 
             // Update position
             if (rendererRef.current?.layer?.currentGraphic?.element && track?.bbox) {
                 rendererRef.current.layer.currentGraphic.element.style.transform =
-                    `translate(${track.bbox[0] / 2.4}px, ${(track.bbox[2] / 2.4) - 250}px)`;
+                    `translate(${(track.bbox[0] - (250 * 250 / 1920)) * containerScale}px,
+                     ${((track.bbox[1] - (200 * 200 / 1920)) * containerScale)}px)
+                      scale(${(track.bbox[2] - track.bbox[0]) / (1920 - 250)})`
             }
-        };
+            // if (rendererRef.current?.layer?.currentGraphic?.element && track?.bbox) {
+            //     rendererRef.current.layer.currentGraphic.element.style.transform =
+            //         `translate(${(track.bbox[0]) * containerScale}px,
+            //          ${((track.bbox[1]) * containerScale)}px)
+            //           scale(${(track.bbox[2] - track.bbox[0]) / (1920 - 250)})`
+            // }
+        }
+
+        // translate(296px, 203.5px) scale(1, 1) rotate(0deg)
 
         // Use requestAnimationFrame for smoother updates
-        requestAnimationFrame(updateGraphic);
+        requestAnimationFrame(updateGraphic)
 
     }, [track?.class_name, track?.track_id, track?.bbox])
-
-
-    useEffect(() => {
-        // if (rendererRef.current) return
-        //
-        //     issueTracker.clear()
-        //     rendererRef.current.playAction({skipAnimation: false,}).catch(issueTracker.addError)
-        //
-        // return () => {
-        //         issueTracker.clear()
-        //         rendererRef.current.stopAction({skipAnimation: false,}).catch(issueTracker.addError)
-        // }
-    }, [])
 
 
     return (
@@ -329,6 +341,7 @@ function GraphicTester({graphic, track}) {
                     position: 'absolute',
                     top: '0px',
                     bottom: '0px',
+                    visibility: 'hidden',
                 }}
             >
 
@@ -403,13 +416,19 @@ function GraphicTester({graphic, track}) {
 }
 
 // Memoize the GraphicTester component to prevent unnecessary re-renders
-export default React.memo(GraphicTester, (prevProps, nextProps) => {
-    // Only re-render if these specific properties have changed
+// arePropsEqual теперь должен включать containerScale
+const arePropsEqual = (prevProps, nextProps) => {
+    if (!prevProps.track || !nextProps.track) {
+        return prevProps.track === nextProps.track;
+    }
+
     return (
-        prevProps.track?.track_id === nextProps.track?.track_id &&
-        prevProps.track?.class_name === nextProps.track?.class_name &&
-        prevProps.track?.bbox?.[0] === nextProps.track?.bbox?.[0] &&
-        prevProps.track?.bbox?.[2] === nextProps.track?.bbox?.[2] &&
-        prevProps.graphic === nextProps.graphic
+        prevProps.graphic === nextProps.graphic &&
+        prevProps.containerScale === nextProps.containerScale && // <-- Важное добавление
+        prevProps.track.bbox?.[0] === nextProps.track.bbox?.[0] &&
+        prevProps.track.bbox?.[1] === nextProps.track.bbox?.[1] &&
+        prevProps.track.class_name === nextProps.track.class_name
     );
-});
+};
+
+export default React.memo(GraphicTester, arePropsEqual);

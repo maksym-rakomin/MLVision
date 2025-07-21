@@ -1,0 +1,43 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "!lower-third",
+  "name": "!Lower Third",
+  "description": "Basic lower third",
+  "main": "graphic.mjs",
+  "customActions": [],
+  "version": "0",
+  "author": {
+    "name": "Johan Nyman, SuperFly.tv"
+  },
+  "supportsRealTime": true,
+  "supportsNonRealTime": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "_title": {
+        "type": "string",
+        "label": "Title",
+        "description": "",
+        "default": "",
+        "gddType": "single-line"
+      },
+      "_subtitle": {
+        "type": "string",
+        "label": "Subtitle",
+        "description": "",
+        "default": "",
+        "gddType": "single-line"
+      },
+      "_color": {
+        "type": "string",
+        "label": "Color",
+        "description": "",
+        "default": "",
+        "gddType": "single-line"
+      }
+    }
+  },
+  "stepCount": 1,
+  "renderRequirements": [],
+  "v_myLittleNote": "Vendor-specific properties can be added using the 'v_' prefix, like this!"
+}

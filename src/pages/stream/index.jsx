@@ -1,41 +1,27 @@
 import { VideoPlayer } from './components/video-player/index.jsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { VideoContext } from './contexts/video.context.js'
-import graphicOgraf from '../../../public/ograf/lower/lower.json'
+import graphicMain2Ograf from '../../../public/ograf/main2/manifest.ograf'
 import GraphicTesterWrapper from '../../lib/ograf/views/GraphicTesterWrapper.jsx'
 
-const FPS = 20;
-
-// Window size for frame loading (how many frames to keep in memory)
-// Окно в 10 секунд кажется разумным
-const FRAME_WINDOW_SIZE = 10 * FPS;
+const FPS = 25;
 
 export const Stream = () => {
-    // Состояние, получаемое от видеоплеера (обновляется ~3-4 раза/сек)
     const [videoTime, setVideoTime] = useState(0.0);
-    // Наше внутреннее, высокочастотное время для плавной анимации (обновляется 20 раз/сек)
     const [internalTime, setInternalTime] = useState(0.0);
 
     const videoPlayer = useRef(null);
     const [isPlaying, setIsPlaying] = useState(false);
 
-    const [frames, setFrames] = useState([]);
+    const [framesMap, setFramesMap] = useState(() => new Map());
     const [_loading, setLoading] = useState(true);
     const [_error, setError] = useState(null);
 
-    // Кэш для хранения всех загруженных кадров для быстрого доступа
-    const frameCache = useRef(new Map());
-
-    // Ref для хранения ID requestAnimationFrame, чтобы его можно было отменить
     const animationFrameRef = useRef(null);
-    // Ref для отслеживания времени последнего обновления кадра в цикле
     const lastFrameTimeRef = useRef(performance.now());
 
-    // --- Логика цикла анимации ---
-
-    // Функция, которая запускает цикл анимации
+    // Цикл анимации
     const startFrameLoop = useCallback(() => {
-        // Останавливаем предыдущий цикл, если он был
         if (animationFrameRef.current) {
             cancelAnimationFrame(animationFrameRef.current);
         }
@@ -44,10 +30,7 @@ export const Stream = () => {
 
         const loop = (currentTime) => {
             const delta = currentTime - lastFrameTimeRef.current;
-
-            // Увеличиваем наше внутреннее время на прошедшее с последнего кадра время
-            setInternalTime(prev => prev + (delta / 1000)); // delta в мс, время в секундах
-
+            setInternalTime(prev => prev + (delta / 1000));
             lastFrameTimeRef.current = currentTime;
             animationFrameRef.current = requestAnimationFrame(loop);
         };
@@ -55,7 +38,6 @@ export const Stream = () => {
         animationFrameRef.current = requestAnimationFrame(loop);
     }, []);
 
-    // Функция, которая останавливает цикл
     const stopFrameLoop = useCallback(() => {
         if (animationFrameRef.current) {
             cancelAnimationFrame(animationFrameRef.current);
@@ -63,56 +45,30 @@ export const Stream = () => {
         }
     }, []);
 
-// 1. Эффект для УПРАВЛЕНИЯ циклом анимации (старт/стоп)
-    // Зависит ТОЛЬКО от isPlaying.
     useEffect(() => {
         if (isPlaying) {
-            // При старте синхронизируем время и запускаем цикл
             setInternalTime(videoTime);
             startFrameLoop();
         } else {
             stopFrameLoop();
         }
 
-        // Очистка при размонтировании компонента
-        return () => {
-            stopFrameLoop();
-        };
-    }, [isPlaying, startFrameLoop, stopFrameLoop]); // <-- Убрали videoTime из зависимостей!
+        return () => stopFrameLoop();
+    }, [isPlaying, startFrameLoop, stopFrameLoop]);
 
-    // 2. Эффект для СИНХРОНИЗАЦИИ времени
-    // Зависит от videoTime. Выполняет "жесткую" синхронизацию.
-    // Это исправляет расхождение времени и обеспечивает корректную перемотку.
     useEffect(() => {
-        // Если видео не играет (например, при перемотке),
-        // мы немедленно обновляем наше внутреннее время.
         if (!isPlaying) {
             setInternalTime(videoTime);
         }
-        // Периодическая синхронизация во время проигрывания для предотвращения
-        // большого расхождения теперь не так критична, т.к. цикл сам считает время.
-        // Но ручная перемотка в состоянии паузы обрабатывается здесь идеально.
+    }, [videoTime, isPlaying]);
 
-    }, [videoTime, isPlaying]); // Зависит от videoTime и isPlaying
-
-
-    // --- Логика загрузки и обработки данных ---
-
+    // Получение текущего фрейма — O(1)
     const currentFrame = useMemo(() => {
-        // Теперь мы используем наше плавное internalTime
         const frameIndex = Math.floor(internalTime * FPS);
+        return framesMap.get(frameIndex);
+    }, [internalTime, framesMap]);
 
-        // Сначала ищем в кэше - это самый быстрый способ
-        if (frameCache.current.has(frameIndex)) {
-            return frameCache.current.get(frameIndex);
-        }
-
-        // Если в кэше нет, ищем в текущем окне кадров (менее предпочтительно)
-        return frames.find(f => f.frame_number === frameIndex);
-    }, [internalTime, frames]); // Зависимость только от internalTime и frames
-
-
-    // Эффект для загрузки и парсинга данных из .jsonl файла (без изменений)
+    // Загрузка и парсинг .jsonl
     useEffect(() => {
         let isMounted = true;
 
@@ -126,7 +82,8 @@ export const Stream = () => {
                     .getReader();
 
                 let buffer = '';
-                let parsedFramesBatch = [];
+
+                let tempMap = new Map();
 
                 while (true) {
                     if (!isMounted) break;
@@ -141,36 +98,17 @@ export const Stream = () => {
                         if (line.trim() === '') continue;
                         try {
                             const parsed = JSON.parse(line);
-                            frameCache.current.set(parsed.frame_number, parsed);
-                            parsedFramesBatch.push(parsed);
+                            tempMap.set(parsed.frame_number, parsed);
                         } catch (err) {
                             console.warn('Error parsing line:', line, err);
                         }
                     }
-
-                    if (parsedFramesBatch.length >= 100) {
-                        if (isMounted) {
-                            setFrames(prev => {
-                                const newFrames = [...prev, ...parsedFramesBatch];
-                                return newFrames.length > FRAME_WINDOW_SIZE
-                                    ? newFrames.slice(-FRAME_WINDOW_SIZE)
-                                    : newFrames;
-                            });
-                        }
-                        parsedFramesBatch = [];
-                    }
                 }
 
-                if (parsedFramesBatch.length > 0 && isMounted) {
-                    setFrames(prev => {
-                        const newFrames = [...prev, ...parsedFramesBatch];
-                        return newFrames.length > FRAME_WINDOW_SIZE
-                            ? newFrames.slice(-FRAME_WINDOW_SIZE)
-                            : newFrames;
-                    });
+                if (isMounted) {
+                    setFramesMap(tempMap);
+                    setLoading(false);
                 }
-
-                if (isMounted) setLoading(false);
             } catch (err) {
                 console.error(err);
                 if (isMounted) {
@@ -187,14 +125,10 @@ export const Stream = () => {
         };
     }, []);
 
-    // --- Обработчики событий от плеера ---
-
-    // Обработчик времени из плеера (упрощен)
     const handleTimeUpdate = useCallback((time) => {
         setVideoTime(time);
-    }, []); // Больше не нужна зависимость от isPlaying
+    }, []);
 
-    // Обработчик play/pause
     const handlePlayPause = useCallback(() => {
         if (videoPlayer.current) {
             if (isPlaying) {
@@ -220,14 +154,13 @@ export const Stream = () => {
 
             <VideoContext.Provider value={videoPlayer}>
                 <div className="relative">
-                    {/* Передаем новый обработчик в плеер */}
-                    <VideoPlayer getCurrentTime={handleTimeUpdate}/>
+                    <VideoPlayer getCurrentTime={handleTimeUpdate} />
                     <GraphicTesterWrapper
-                        graphic={{ manifest: graphicOgraf, "folderPath": "/ograf/lower/", "path": "/ograf/lower/lower.json" }}
+                        graphic={{ manifest: graphicMain2Ograf, folderPath: "/ograf/main2/", path: "/ograf/main2/manifest.ograf" }}
                         currentFrame={currentFrame}
                     />
                 </div>
             </VideoContext.Provider>
         </div>
-    )
+    );
 }
