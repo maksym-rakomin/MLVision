@@ -4,7 +4,7 @@ import GraphicTester from './GraphicTester.jsx'
 // Исходные размеры видео, относительно которых даны координаты bbox
 const SOURCE_VIDEO_WIDTH = 1280;
 
-const MAX_CONCURRENT_OBJECTS = 5;
+const MAX_CONCURRENT_OBJECTS = 18;
 
 const isObjectVisible = (item) => {
     return item && item.bbox && item.bbox.length >= 4;
