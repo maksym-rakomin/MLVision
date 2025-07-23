@@ -76,9 +76,6 @@ function getColorFromValue(value) {
 
 // todo
 
-const VIDEO_WIDTH = 1280
-const VIDEO_HEIGHT = 720
-
 
 function GraphicTester({graphic, track, containerScale}) {
 
@@ -290,9 +287,9 @@ function GraphicTester({graphic, track, containerScale}) {
         //     _color: getColorFromValue(+getNextSpeed().toFixed(0))
         // }
         const data = {
-            _team: `${track?.class_name} - ${track?.track_id}`,
-            _driver: `Current speed: ${getNextSpeed().toFixed(2)} km/h`,
-            _car_position: getColorFromValue(+getNextSpeed().toFixed(0))
+            _team: `Current speed: ${getNextSpeed().toFixed(2)} km/h`,
+            _driver: `Driver: ${track?.track_id}`,
+            _car_position: `             # ${track?.track_id.toFixed(0)}`
         }
 
         // Batch updates to reduce rendering cycles
@@ -305,21 +302,27 @@ function GraphicTester({graphic, track, containerScale}) {
             }
 
             // Update position
-            if (rendererRef.current?.layer?.currentGraphic?.element && track?.bbox) {
-                rendererRef.current.layer.currentGraphic.element.style.transform =
-                    `translate(${(track.bbox[0] - (250 * 250 / 1920)) * containerScale}px,
-                     ${((track.bbox[1] - (200 * 200 / 1920)) * containerScale)}px)
-                      scale(${(track.bbox[2] - track.bbox[0]) / (1920 - 250)})`
-            }
             // if (rendererRef.current?.layer?.currentGraphic?.element && track?.bbox) {
             //     rendererRef.current.layer.currentGraphic.element.style.transform =
-            //         `translate(${(track.bbox[0]) * containerScale}px,
-            //          ${((track.bbox[1]) * containerScale)}px)
+            //         `translate(${(track.bbox[0] - (250 * 250 / 1920)) * containerScale}px,
+            //          ${((track.bbox[1] - (200 * 200 / 1920)) * containerScale)}px)
             //           scale(${(track.bbox[2] - track.bbox[0]) / (1920 - 250)})`
             // }
+            if (rendererRef.current?.layer?.currentGraphic?.element && track?.bbox) {
+                const scaleX = (track.bbox[2] - track.bbox[0]) / (1920 - 1290 + 261) / containerScale
+                const scaleY = (track.bbox[3] - track.bbox[1]) / (1080 - 810 + 733) / containerScale // 733 - с потолка
+
+                rendererRef.current.layer.currentGraphic.element.style.transform =
+                    `translate(${(track.bbox[0] * containerScale) - (296 * scaleX) }px,
+                     ${((track.bbox[1]) * containerScale) - (203 * scaleY)  }px)
+                      scale(${scaleX})`
+            }
         }
 
-        // translate(296px, 203.5px) scale(1, 1) rotate(0deg)
+        // translate(296px, 203.5px) scale(1, 1) rotate(0deg) - смещение которое расчитывается в iframe само
+        // 261, 1290, 1920 - параметры смещений из loopic по X
+        // 1080, 810, 203 - параметры смещений из loopic по Y
+
 
         // Use requestAnimationFrame for smoother updates
         requestAnimationFrame(updateGraphic)
@@ -337,7 +340,8 @@ function GraphicTester({graphic, track, containerScale}) {
                     width: '100%',
                     // position: 'absolute',
                     overflow: 'hidden',
-                    transition: '0.2s all ease-out',
+                    transition: 'none !important',
+                    // transition: '0.2s all ease-out',
                     position: 'absolute',
                     top: '0px',
                     bottom: '0px',
