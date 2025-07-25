@@ -1,0 +1,44 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "lower-third",
+  "version": "1.0.0",
+  "name": "News Lower Third",
+  "description": "",
+  "author": {
+    "name": "Loopic",
+    "email": "info@loopic.io",
+    "url": "www.loopic.io"
+  },
+  "main": "graphic.mjs",
+  "customActions": [],
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "_team": {
+        "type": "string",
+        "label": "Team",
+        "description": "",
+        "default": "",
+        "gddType": "single-line"
+      },
+      "_driver": {
+        "type": "string",
+        "label": "Driver",
+        "description": "",
+        "default": "",
+        "gddType": "single-line"
+      },
+      "_car_position": {
+        "type": "string",
+        "label": "Car Position",
+        "description": "",
+        "default": "",
+        "gddType": "single-line"
+      }
+    }
+  },
+  "stepCount": 1,
+  "renderRequirements": []
+}
