@@ -175,6 +175,12 @@ function GraphicTester({graphic, track, containerScale}) {
         await reloadGraphicManifest()
         await rendererRef.current.loadGraphic(settingsRef.current).catch(issueTracker.addError)
 
+        rendererRef.current
+            .playAction({
+                skipAnimation: true,
+            })
+            .catch(issueTracker.addError)
+
         setIsReloading(true)
     }, [])
 
@@ -272,13 +278,13 @@ function GraphicTester({graphic, track, containerScale}) {
         if (!track || !track.bbox || !previewContainerRef.current) {
             // Если трека нет, скрываем компонент. Это важно для пулинга.
             if (previewContainerRef.current) {
-                previewContainerRef.current.style.visibility = 'hidden';
+                previewContainerRef.current.style.visibility = 'hidden'
             }
-            return;
+            return
         }
 
         // Если есть, делаем видимым
-        previewContainerRef.current.style.visibility = 'visible';
+        previewContainerRef.current.style.visibility = 'visible'
 
         // Create data object - no useMemo needed here as we're already in a dependency-controlled effect
         // const data = {
@@ -301,28 +307,16 @@ function GraphicTester({graphic, track, containerScale}) {
                 rendererRef.current.updateAction({data}).catch(issueTracker.addError)
             }
 
-            // Update position
-            // if (rendererRef.current?.layer?.currentGraphic?.element && track?.bbox) {
-            //     rendererRef.current.layer.currentGraphic.element.style.transform =
-            //         `translate(${(track.bbox[0] - (250 * 250 / 1920)) * containerScale}px,
-            //          ${((track.bbox[1] - (200 * 200 / 1920)) * containerScale)}px)
-            //           scale(${(track.bbox[2] - track.bbox[0]) / (1920 - 250)})`
-            // }
             if (rendererRef.current?.layer?.currentGraphic?.element && track?.bbox) {
-                const scaleX = (track.bbox[2] - track.bbox[0]) / (1920 - 1290 + 261) / containerScale
-                const scaleY = (track.bbox[3] - track.bbox[1]) / (1080 - 810 + 733) / containerScale // 733 - с потолка
+                const scaleX = (track.bbox[2] - track.bbox[0]) * containerScale / 1047 // 1047 - width frame in loopic
+                const scaleY = (track.bbox[3] - track.bbox[1]) * containerScale / 622 // 622 - height frame in loopic
 
                 rendererRef.current.layer.currentGraphic.element.style.transform =
-                    `translate(${(track.bbox[0] * containerScale) - (296 * scaleX) }px,
-                     ${((track.bbox[1]) * containerScale) - (203 * scaleY)  }px)
-                      scale(${scaleX})`
+                    `translate(${(track.bbox[0] * containerScale) }px,
+                     ${((track.bbox[1]) * containerScale) }px)
+                      scale(${scaleX}, ${scaleY})`
             }
         }
-
-        // translate(296px, 203.5px) scale(1, 1) rotate(0deg) - смещение которое расчитывается в iframe само
-        // 261, 1290, 1920 - параметры смещений из loopic по X
-        // 1080, 810, 203 - параметры смещений из loopic по Y
-
 
         // Use requestAnimationFrame for smoother updates
         requestAnimationFrame(updateGraphic)
@@ -423,7 +417,7 @@ function GraphicTester({graphic, track, containerScale}) {
 // arePropsEqual теперь должен включать containerScale
 const arePropsEqual = (prevProps, nextProps) => {
     if (!prevProps.track || !nextProps.track) {
-        return prevProps.track === nextProps.track;
+        return prevProps.track === nextProps.track
     }
 
     return (
@@ -432,7 +426,7 @@ const arePropsEqual = (prevProps, nextProps) => {
         prevProps.track.bbox?.[0] === nextProps.track.bbox?.[0] &&
         prevProps.track.bbox?.[1] === nextProps.track.bbox?.[1] &&
         prevProps.track.class_name === nextProps.track.class_name
-    );
-};
+    )
+}
 
-export default React.memo(GraphicTester, arePropsEqual);
+export default React.memo(GraphicTester, arePropsEqual)

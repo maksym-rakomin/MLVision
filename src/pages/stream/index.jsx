@@ -1,7 +1,7 @@
 import { VideoPlayer } from './components/video-player/index.jsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { VideoContext } from './contexts/video.context.js'
-import graphicMain2Ograf from '../../../public/ograf/main2/manifest.ograf'
+import graphicMain2Ograf from '../../../public/ograf/main3/manifest.ograf'
 import GraphicTesterWrapper from '../../lib/ograf/views/GraphicTesterWrapper.jsx'
 
 const FPS = 25;
@@ -74,7 +74,8 @@ export const Stream = () => {
 
         const parseStream = async () => {
             try {
-                const response = await fetch('./data/new_detections2.jsonl');
+                // const response = await fetch('./data/new_detections2.jsonl');
+                const response = await fetch('./data/3laps.jsonl');
                 if (!response.body) throw new Error('No response body');
 
                 const reader = response.body
@@ -156,7 +157,7 @@ export const Stream = () => {
                 <div className="relative">
                     <VideoPlayer getCurrentTime={handleTimeUpdate} />
                     <GraphicTesterWrapper
-                        graphic={{ manifest: graphicMain2Ograf, folderPath: "/ograf/main2/", path: "/ograf/main2/manifest.ograf" }}
+                        graphic={{ manifest: graphicMain2Ograf, folderPath: "/ograf/main3/", path: "/ograf/main3/manifest.ograf" }}
                         currentFrame={currentFrame}
                     />
                 </div>
