@@ -17,8 +17,8 @@ class Graphic extends HTMLElement {
 
     // console.log(777, import.meta.resolve('./resources/index.html'));
     iframe.src = import.meta.resolve('./resources/index.html');
-    iframe.width = '1920';
-    iframe.height = '1080';
+    iframe.width = '1047';
+    iframe.height = '622';
     iframe.style.border = 'none';
     // iframe.style.border = '1px solid #ccc';
     iframe.style.position = 'absolute';
