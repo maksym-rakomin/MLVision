@@ -59,6 +59,7 @@ function GraphicTesterWrapper({ graphic, currentFrame, prevFrame, nextFrame }) {
 
     const objectsNow = useMemo(() => getObjectsFromFrame(currentFrame), [currentFrame]);
     const objectsNext = useMemo(() => getObjectsFromFrame(nextFrame), [nextFrame]);
+    const objectsPrev = useMemo(() => getObjectsFromFrame(prevFrame), [prevFrame]);
 
     // Ускоряем доступ: карта текущих объектов по track_id
     const currentById = useMemo(() => {
@@ -66,6 +67,20 @@ function GraphicTesterWrapper({ graphic, currentFrame, prevFrame, nextFrame }) {
         for (const o of objectsNow) m.set(o.track_id, o);
         return m;
     }, [objectsNow]);
+
+    // Карта предыдущих объектов по track_id для улучшенного сглаживания
+    const prevById = useMemo(() => {
+        const m = new Map();
+        for (const o of objectsPrev) m.set(o.track_id, o);
+        return m;
+    }, [objectsPrev]);
+
+    // Карта следующих объектов по track_id для предиктивного сглаживания
+    const nextById = useMemo(() => {
+        const m = new Map();
+        for (const o of objectsNext) m.set(o.track_id, o);
+        return m;
+    }, [objectsNext]);
 
     // Обновляем привязки при смене кадров
     useEffect(() => {
@@ -124,14 +139,53 @@ function GraphicTesterWrapper({ graphic, currentFrame, prevFrame, nextFrame }) {
 
             const bbox = obj.bbox;
             const prev = smoothYMap.current.get(trackId);
+            const prevObj = prevById.get(trackId);
+            const nextObj = nextById.get(trackId);
 
             // Сглаживаем только Y-координаты (bbox[1] и bbox[3])
             let y1 = bbox[1];
             let y2 = bbox[3];
 
+            // Улучшенное сглаживание с использованием prevFrame и nextFrame
             if (prev) {
+                // Базовое экспоненциальное сглаживание
                 y1 = prev.y1 + (bbox[1] - prev.y1) * SMOOTH_FACTOR_Y;
                 y2 = prev.y2 + (bbox[3] - prev.y2) * SMOOTH_FACTOR_Y;
+
+                // Дополнительное сглаживание на основе временных данных
+                if (prevObj && nextObj) {
+                    // Вычисляем направление движения на основе prev -> current -> next
+                    const prevY1 = prevObj.bbox[1];
+                    const prevY2 = prevObj.bbox[3];
+                    const nextY1 = nextObj.bbox[1];
+                    const nextY2 = nextObj.bbox[3];
+
+                    // Средняя позиция между prev, current и next для более плавного движения
+                    const avgY1 = (prevY1 + bbox[1] + nextY1) / 3;
+                    const avgY2 = (prevY2 + bbox[3] + nextY2) / 3;
+
+                    // Применяем дополнительное сглаживание к средней позиции
+                    y1 = y1 + (avgY1 - y1) * SMOOTH_FACTOR_Y * 0.5;
+                    y2 = y2 + (avgY2 - y2) * SMOOTH_FACTOR_Y * 0.5;
+                } else if (prevObj) {
+                    // Если есть только предыдущий кадр, используем его для сглаживания
+                    const prevY1 = prevObj.bbox[1];
+                    const prevY2 = prevObj.bbox[3];
+                    const avgY1 = (prevY1 + bbox[1]) / 2;
+                    const avgY2 = (prevY2 + bbox[3]) / 2;
+
+                    y1 = y1 + (avgY1 - y1) * SMOOTH_FACTOR_Y * 0.3;
+                    y2 = y2 + (avgY2 - y2) * SMOOTH_FACTOR_Y * 0.3;
+                } else if (nextObj) {
+                    // Если есть только следующий кадр, используем его для предиктивного сглаживания
+                    const nextY1 = nextObj.bbox[1];
+                    const nextY2 = nextObj.bbox[3];
+                    const avgY1 = (bbox[1] + nextY1) / 2;
+                    const avgY2 = (bbox[3] + nextY2) / 2;
+
+                    y1 = y1 + (avgY1 - y1) * SMOOTH_FACTOR_Y * 0.3;
+                    y2 = y2 + (avgY2 - y2) * SMOOTH_FACTOR_Y * 0.3;
+                }
             }
             // Обновляем "память" сглаживания
             smoothYMap.current.set(trackId, { y1, y2 });
@@ -166,7 +220,7 @@ export default React.memo(GraphicTesterWrapper, (prevProps, nextProps) => {
     return (
         prevProps.graphic === nextProps.graphic &&
         prevProps.currentFrame?.frame_number === nextProps.currentFrame?.frame_number &&
-        prevProps.nextFrame?.frame_number === nextProps.nextFrame?.frame_number
-        // prevFrame можно добавить аналогично, если используешь его во входах
+        prevProps.nextFrame?.frame_number === nextProps.nextFrame?.frame_number &&
+        prevProps.prevFrame?.frame_number === nextProps.prevFrame?.frame_number
     );
 });
