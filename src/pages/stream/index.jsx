@@ -68,6 +68,30 @@ export const Stream = () => {
         return framesMap.get(frameIndex);
     }, [internalTime, framesMap]);
 
+    // Получение массива предыдущих фреймов (1 предыдущих значения)
+    const prevFrame = useMemo(() => {
+        const frameIndex = Math.floor(internalTime * FPS);
+        const prevFrames = [];
+        for (let i = 1; i <= 1; i++) {
+            const prevIndex = frameIndex - i;
+            const frame = framesMap.get(prevIndex);
+            prevFrames.push(frame || undefined);
+        }
+        return prevFrames;
+    }, [internalTime, framesMap]);
+
+    // Получение массива следующих фреймов (1 следующих значения)
+    const nextFrame = useMemo(() => {
+        const frameIndex = Math.floor(internalTime * FPS);
+        const nextFrames = [];
+        for (let i = 1; i <= 1; i++) {
+            const nextIndex = frameIndex + i;
+            const frame = framesMap.get(nextIndex);
+            nextFrames.push(frame || undefined);
+        }
+        return nextFrames;
+    }, [internalTime, framesMap]);
+
     // Загрузка и парсинг .jsonl
     useEffect(() => {
         let isMounted = true;
@@ -159,6 +183,8 @@ export const Stream = () => {
                     <GraphicTesterWrapper
                         graphic={{ manifest: graphicMain2Ograf, folderPath: "/ograf/main3/", path: "/ograf/main3/manifest.ograf" }}
                         currentFrame={currentFrame}
+                        prevFrame={prevFrame}
+                        nextFrame={nextFrame}
                     />
                 </div>
             </VideoContext.Provider>

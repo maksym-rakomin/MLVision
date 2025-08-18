@@ -286,12 +286,6 @@ function GraphicTester({graphic, track, containerScale}) {
         // Если есть, делаем видимым
         previewContainerRef.current.style.visibility = 'visible'
 
-        // Create data object - no useMemo needed here as we're already in a dependency-controlled effect
-        // const data = {
-        //     _title: `${track?.class_name} - ${track?.track_id}`,
-        //     _subtitle: `Current speed: ${getNextSpeed().toFixed(2)} km/h`,
-        //     _color: getColorFromValue(+getNextSpeed().toFixed(0))
-        // }
         const data = {
             _team: `Current speed: ${getNextSpeed().toFixed(2)} km/h`,
             _driver: `Driver: ${track?.track_id}`,
