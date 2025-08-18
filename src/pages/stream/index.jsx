@@ -84,7 +84,7 @@ export const Stream = () => {
     const nextFrame = useMemo(() => {
         const frameIndex = Math.floor(internalTime * FPS);
         const nextFrames = [];
-        for (let i = 1; i <= 1; i++) {
+        for (let i = 1; i <= 2; i++) {
             const nextIndex = frameIndex + i;
             const frame = framesMap.get(nextIndex);
             nextFrames.push(frame || undefined);

@@ -14,7 +14,7 @@ const SOURCE_VIDEO_WIDTH = 1280;
 const MAX_CONCURRENT_OBJECTS = 18;
 
 // Чем меньше фактор — тем плавнее вертикальное сглаживание
-const SMOOTH_FACTOR_Y = 0.04;
+const SMOOTH_FACTOR_Y = 0.1;
 
 const isObjectVisible = (item) => {
     return item && item.bbox && item.bbox.length >= 4;
@@ -53,7 +53,21 @@ function GraphicTesterWrapper({ graphic, currentFrame, prevFrame, nextFrame }) {
 
     // Достаём видимые объекты из кадра
     const getObjectsFromFrame = (frame) => {
-        if (!frame || !frame.tracked_objects) return [];
+        if (!frame) return [];
+
+        // Если frame - это массив объектов (для prevFrame и nextFrame)
+        if (Array.isArray(frame)) {
+            const allObjects = [];
+            for (const frameObj of frame) {
+                if (frameObj && frameObj.tracked_objects) {
+                    allObjects.push(...frameObj.tracked_objects);
+                }
+            }
+            return allObjects.filter(isObjectVisible);
+        }
+
+        // Если frame - это одиночный объект (для currentFrame)
+        if (!frame.tracked_objects) return [];
         return frame.tracked_objects.filter(isObjectVisible);
     };
 
