@@ -99,7 +99,7 @@ export const Stream = () => {
         const parseStream = async () => {
             try {
                 // const response = await fetch('./data/new_detections2.jsonl');
-                const response = await fetch('./data/3laps.jsonl');
+                const response = await fetch('./data/prepareData.jsonl');
                 if (!response.body) throw new Error('No response body');
 
                 const reader = response.body
