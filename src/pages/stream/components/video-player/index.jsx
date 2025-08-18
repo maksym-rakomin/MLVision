@@ -6,7 +6,7 @@ export const VideoPlayer = memo(function VideoPlayer ({getCurrentTime}) {
 
     const videoJsOptions = {
         autoplay: true,
-        controls: true,
+        controls: false,
         responsive: true,
         fluid: true,
         sources: [{
