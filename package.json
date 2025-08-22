@@ -5,7 +5,7 @@
   "homepage": "https://maksym-rakomin.github.io/MLVision/",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node api.js && vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",

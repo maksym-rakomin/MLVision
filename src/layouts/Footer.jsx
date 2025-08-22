@@ -4,7 +4,7 @@ function Footer() {
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <p className="mb-4 md:mb-0">
-            &copy; {new Date().getFullYear()} ML Vision 1.1.1
+            &copy; {new Date().getFullYear()} ML Vision 1.1.3
           </p>
           <div className="flex gap-4">
             <a href="https://vite.dev" target="_blank" rel="noreferrer" className="hover:text-blue-300">Vite</a>
